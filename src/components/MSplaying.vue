@@ -1,6 +1,5 @@
 <template>
-  <div id="app">
-    <h1>{{ title }}</h1>
+  <div>
     <section class="players">
       <h2 :class="{ winner: !monster.life, loser: !player.life }">
         {{ player.name }}
@@ -30,11 +29,11 @@
       </div>
     </section>
     <section class="actionButtons">
-      <div v-if="!isPlaying">
-        <input type="text" v-model="monster.name" />
-        <button @click="start">Start</button>
+      <div v-if="!isPlaying && !logs.length">
+        <!-- <input type="text" v-model="monster.name" /> -->
+        <button @click="isPlaying = true">Start</button>
       </div>
-      <div v-else>
+      <div v-else-if="isPlaying">
         <button @click="attack" v-bind="{ disabled: !isClickable }">
           Attack
         </button>
@@ -43,28 +42,36 @@
           Give up
         </button>
       </div>
+      <div v-else>
+        <button @click="restart">Retry</button>
+      </div>
     </section>
     <section class="battle-log" v-if="logs.length">
-      <ul>
-        <li v-for="(log, index) in logs" :key="index">
+      <div v-for="(log, index) in logs" :key="index">
+        <p
+          :class="[
+            { 'player-log': log.isPlayer },
+            { 'monster-log': !log.isPlayer },
+          ]"
+        >
           {{ log.text }}
-        </li>
-      </ul>
+        </p>
+      </div>
     </section>
   </div>
 </template>
 
 <script>
 export default {
+  props: ["monsterName"],
   data: function() {
     return {
-      title: "Monster Slayer",
       player: {
         name: "You",
         life: 100,
       },
       monster: {
-        name: "Monster",
+        name: this.monsterName,
         life: 100,
       },
       isPlaying: false,
@@ -73,13 +80,13 @@ export default {
     };
   },
   methods: {
-    start: function() {
-      this.isPlaying = true;
+    restart() {
+      this.isPlaying = !this.isPlaying;
       this.player.life = 100;
       this.monster.life = 100;
       this.logs = [];
     },
-    attack: function() {
+    attack() {
       const damage = this.calculater(5, 1);
       this.monster.life -= damage;
       this.logs.unshift({
@@ -96,7 +103,7 @@ export default {
       this.judge();
       setTimeout(this.monsterAttack, 300);
     },
-    monsterAttack: function() {
+    monsterAttack() {
       const damage = this.calculater(10, 3);
       this.player.life -= damage;
       this.logs.unshift({
@@ -112,10 +119,10 @@ export default {
       this.judge();
       this.isClickable = true;
     },
-    calculater: function(max, min) {
+    calculater(max, min) {
       return Math.max(Math.floor(Math.random() * max) + 1, min);
     },
-    heal: function() {
+    heal() {
       const restore = this.calculater(10, 5);
       this.player.life += restore;
       if (this.player.life > 100) this.player.life = 100;
@@ -126,13 +133,13 @@ export default {
       this.isClickable = false;
       setTimeout(this.monsterAttack, 300);
     },
-    giveUp: function() {
+    giveUp() {
       const confirmation = confirm("Really?");
       if (confirmation) {
-        this.isPlaying = false;
+        this.restart();
       } else alert("Never give up!!!");
     },
-    judge: function() {
+    judge() {
       if (this.player.life <= 0) {
         this.player.life = 0;
         alert("YOU LOSE...");
@@ -146,19 +153,19 @@ export default {
     },
   },
   computed: {
-    isPlayerDying: function() {
+    isPlayerDying() {
       if (this.player.life < 30) {
         return true;
       } else return false;
     },
-    isMonsterDying: function() {
+    isMonsterDying() {
       if (this.monster.life < 30) {
         return true;
       } else return false;
     },
   },
   watch: {
-    logs: function() {
+    logs() {
       if (this.logs.length > 10) {
         this.logs.pop();
       }
@@ -194,7 +201,15 @@ export default {
 
 .battle-log {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+}
+
+.player-log {
+  text-align: left;
+}
+
+.monster-log {
+  text-align: right;
 }
 
 .winner {

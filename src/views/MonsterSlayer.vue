@@ -1,6 +1,10 @@
 <template>
   <div>
-    <component :is="selectedComponent"></component>
+    <component
+      :is="selectedComponent"
+      :monsterName="monsterName"
+      @monsterWasCreated="monsterName = $event"
+    ></component>
     <button
       @click="selectedComponent = 'MSplaying'"
       v-if="selectedComponent === 'MSdetails'"
@@ -22,6 +26,7 @@ export default {
   data() {
     return {
       selectedComponent: "MSdetails",
+      monsterName: "Monster",
     };
   },
 };
