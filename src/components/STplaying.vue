@@ -1,21 +1,24 @@
 <template>
-  <div id="app">
-    <h1>{{ title }}</h1>
-    <div class="first-letter">
-      <button @click="start">Start</button>
-      <button @click="reset">Reset</button>
-      <h1>{{ firstLetter }}</h1>
+  <div>
+    <h1 v-if="!isPlaying">{{ title }}</h1>
+    <div>
+      <button @click="start" v-if="!isPlaying">Start</button>
+      <button @click="reset" v-if="isPlaying">Reset</button>
     </div>
+    <h1 v-if="isPlaying">Start with: "{{ firstLetter }}"</h1>
     <div class="timer">{{ time }}</div>
-    <div class="input">
-      <input type="text" v-model="input" @keydown.enter="submit" />
-    </div>
     <div class="answers">
       <div v-for="(answer, index) in answers" :key="index">
         <div class="answer-card">
-          <p>{{ index + 1 }}: {{ answer }}</p>
+          <p>{{ index + 1 }}.</p>
+          <p>
+            {{ answer.body }}<b>{{ answer.lastCharacter }}</b>
+          </p>
         </div>
       </div>
+    </div>
+    <div class="input">
+      <input type="text" v-model="input" @keydown.enter="submit" />
     </div>
   </div>
 </template>
@@ -31,30 +34,36 @@ export default {
       input: "",
       answers: [],
       intervalId: "",
+      isPlaying: false,
     };
   },
   methods: {
     start: function() {
       const index = Math.floor(Math.random() * 7);
       this.firstLetter = this.letters[index];
-      this.title = "GOGOGO~~~";
+      this.isPlaying = true;
       this.timer();
     },
     submit: function() {
-      if (this.input[0] === this.firstLetter && this.time !== 0) {
+      if (this.input[0] === this.firstLetter) {
         const indexLast = this.input.length - 1;
-        this.answers.push(this.input);
-        this.firstLetter = this.input.charAt(indexLast);
-        this.input = "";
+        const answer = {
+          body: this.input.slice(0, indexLast),
+          lastCharacter: this.input[indexLast],
+        };
+        this.answers.push(answer);
+        this.firstLetter = answer.lastCharacter;
+        this.input = answer.lastCharacter;
         clearInterval(this.intervalId);
         this.timer();
       }
     },
     reset: function() {
+      this.time = 10;
       this.firstLetter = "";
       this.input = "";
       this.answers = [];
-      this.title = "Shiritori";
+      this.isPlaying = false;
       clearInterval(this.intervalId);
     },
     timer: function() {
@@ -68,14 +77,14 @@ export default {
   watch: {
     answers: function() {
       if (this.answers.length === 10) {
-        this.title = "CLEAR!!!!!";
+        alert("Congratulation!!");
         clearInterval(this.intervalId);
       }
     },
     time: function() {
       if (this.time === 0) {
-        clearInterval(this.intervalId);
-        this.title = "GAME OVER!!!";
+        alert("GAME OVER...");
+        this.reset();
       }
     },
   },
