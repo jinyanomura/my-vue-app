@@ -1,26 +1,34 @@
 <template>
-  <div>
-    <section class="players">
-      <h2 :class="{ winner: !monster.life, loser: !player.life }">
+  <div class="container">
+    <section class="players row justify-content-between">
+      <h2
+        class="col-5 text-start"
+        :class="{ winner: !monster.life, loser: !player.life }"
+      >
         {{ player.name }}
       </h2>
-      <h2 :class="{ winner: !player.life, loser: !monster.life }">
+      <h2
+        class="col-5 text-end"
+        :class="{ winner: !player.life, loser: !monster.life }"
+      >
         {{ monster.name }}
       </h2>
     </section>
-    <section class="life-bar">
-      <div class="bar-outline">
+    <section class="life-bar row justify-content-between">
+      <div class="col-5 progress p-0">
         <div
-          class="players-life"
+          class="players-life progress-bar"
+          role="progressbar"
           :style="{ width: player.life + '%' }"
           :class="{ dying: isPlayerDying }"
         >
           {{ player.life }}
         </div>
       </div>
-      <div class="bar-outline">
+      <div class="col-5 progress p-0">
         <div
-          class="players-life"
+          class="players-life progress-bar"
+          role="progressbar"
           :style="{ width: monster.life + '%' }"
           :class="{ dying: isMonsterDying }"
         >
@@ -28,34 +36,58 @@
         </div>
       </div>
     </section>
-    <section class="actionButtons">
-      <div v-if="!isPlaying && !logs.length">
-        <!-- <input type="text" v-model="monster.name" /> -->
-        <button @click="isPlaying = true">Start</button>
+    <section class="images row justify-content-between mx-5 my-3">
+      <div class="player-img col-4">
+        <img :src="player.image" class="img-fluid" />
       </div>
-      <div v-else-if="isPlaying">
-        <button @click="attack" v-bind="{ disabled: !isClickable }">
-          Attack
-        </button>
-        <button @click="heal" v-bind="{ disabled: !isClickable }">Heal</button>
-        <button @click="giveUp" v-bind="{ disabled: !isClickable }">
-          Give up
-        </button>
-      </div>
-      <div v-else>
-        <button @click="restart">Retry</button>
+      <div class="monster-img col-4">
+        <img :src="monster.image" class="img-fluid rounded-circle" />
       </div>
     </section>
-    <section class="battle-log" v-if="logs.length">
-      <div v-for="(log, index) in logs" :key="index">
+    <section class="log border shadow">
+      <div class="px-3 py-5">
         <p
+          class="fs-5 font-monospace m-0"
+          v-for="(log, index) in currentLog"
+          :key="index"
           :class="[
-            { 'player-log': log.isPlayer },
-            { 'monster-log': !log.isPlayer },
+            { 'text-start': log.isPlayer },
+            { 'text-end': !log.isPlayer },
           ]"
         >
           {{ log.text }}
         </p>
+      </div>
+    </section>
+    <section class="position-absolute bottom-0 start-50 translate-middle">
+      <div v-if="!isPlaying && logs.length === 1">
+        <button class="btn btn-lg btn-dark" @click="isPlaying = true">
+          たたかう
+        </button>
+        <button class="btn btn-lg btn-secondary" @click="encounter('別の')">
+          にげる
+        </button>
+      </div>
+      <div v-else-if="isPlaying">
+        <div class="btn-group-lg">
+          <button
+            class="btn btn-warning text-light"
+            @click="attack"
+            v-bind="{ disabled: !isClickable }"
+          >
+            こうげき
+          </button>
+          <button
+            class="btn btn-info text-light"
+            @click="heal"
+            v-bind="{ disabled: !isClickable }"
+          >
+            かいふく
+          </button>
+        </div>
+      </div>
+      <div v-else>
+        <button class="btn btn-lg btn-dark" @click="restart">Retry</button>
       </div>
     </section>
   </div>
@@ -63,58 +95,95 @@
 
 <script>
 export default {
-  props: ["monsterName"],
+  props: ["playerName", "monsterName"],
   data: function() {
     return {
       player: {
-        name: "You",
+        name: this.playerName,
         life: 100,
+        image: require("../assets/player.png"),
+        commands: ["給水した!", "昼寝した!", "平手打ち!", "飛び蹴り!!"],
       },
       monster: {
         name: this.monsterName,
         life: 100,
+        image: "",
+        commands: ["舐めた...", "噛みついた!", "突進した!!"],
       },
       isPlaying: false,
       isClickable: true,
       logs: [],
+      monsterImages: [
+        require("../assets/monster1.png"),
+        require("../assets/monster2.png"),
+        require("../assets/monster3.png"),
+        require("../assets/monster4.png"),
+        require("../assets/monster5.png"),
+      ],
     };
   },
   methods: {
+    encounter(variety) {
+      const index = this.calculater(5, 1) - 1;
+      this.monster.image = this.monsterImages[index];
+      this.logs = [];
+      this.logs.push({
+        isPlayer: false,
+        text: `${variety} ${this.monster.name} があらわれた!!!`,
+      });
+    },
     restart() {
-      this.isPlaying = !this.isPlaying;
       this.player.life = 100;
       this.monster.life = 100;
-      this.logs = [];
+      this.encounter("再び");
     },
     attack() {
       const damage = this.calculater(5, 1);
+      let action = "";
+      if (damage <= 3) {
+        action = this.player.commands[2];
+      } else {
+        action = this.player.commands[3];
+      }
       this.monster.life -= damage;
       this.logs.unshift({
         isPlayer: true,
         text:
           this.player.name +
-          " Hits " +
+          " の " +
+          action +
+          " " +
           this.monster.name +
-          " for " +
+          " に " +
           damage +
-          "!",
+          "ダメージ！",
       });
       this.isClickable = false;
       this.judge();
-      setTimeout(this.monsterAttack, 300);
+      setTimeout(this.monsterAttack, 500);
     },
     monsterAttack() {
       const damage = this.calculater(10, 3);
+      let action = "";
+      if (damage <= 5) {
+        action = this.monster.commands[0];
+      } else if (damage <= 8) {
+        action = this.monster.commands[1];
+      } else {
+        action = this.monster.commands[2];
+      }
       this.player.life -= damage;
       this.logs.unshift({
         isPlayer: false,
         text:
           this.monster.name +
-          " Hits " +
+          " が " +
+          action +
+          " " +
           this.player.name +
-          " for " +
+          " に " +
           damage +
-          "!",
+          "ダメージ！",
       });
       this.judge();
       this.isClickable = true;
@@ -124,20 +193,21 @@ export default {
     },
     heal() {
       const restore = this.calculater(10, 5);
+      let action = "";
+      if (restore <= 8) {
+        action = this.player.commands[0];
+      } else {
+        action = this.player.commands[1];
+      }
       this.player.life += restore;
       if (this.player.life > 100) this.player.life = 100;
       this.logs.unshift({
         isPlayer: true,
-        text: this.player.name + " got water! " + restore + " healed! ",
+        text:
+          this.player.name + " が " + action + "  " + restore + " " + "回復！",
       });
       this.isClickable = false;
-      setTimeout(this.monsterAttack, 300);
-    },
-    giveUp() {
-      const confirmation = confirm("Really?");
-      if (confirmation) {
-        this.restart();
-      } else alert("Never give up!!!");
+      setTimeout(this.monsterAttack, 500);
     },
     judge() {
       if (this.player.life <= 0) {
@@ -153,6 +223,9 @@ export default {
     },
   },
   computed: {
+    currentLog() {
+      return this.logs.slice(0, 2);
+    },
     isPlayerDying() {
       if (this.player.life < 30) {
         return true;
@@ -164,52 +237,16 @@ export default {
       } else return false;
     },
   },
-  watch: {
-    logs() {
-      if (this.logs.length > 10) {
-        this.logs.pop();
-      }
-    },
+  created() {
+    this.encounter("野生の");
   },
 };
 </script>
 
 <style scoped>
-.players,
-.life-bar {
-  display: flex;
-  justify-content: space-around;
-}
-
-.bar-outline {
-  height: 20px;
-  width: 50%;
-  margin: 10px;
-  border: 3px solid black;
-  text-align: center;
-}
-
 .players-life {
   height: 100%;
   background-color: lightgreen;
-}
-
-.actionButtons {
-  display: flex;
-  justify-content: space-around;
-}
-
-.battle-log {
-  display: flex;
-  flex-direction: column;
-}
-
-.player-log {
-  text-align: left;
-}
-
-.monster-log {
-  text-align: right;
 }
 
 .winner {

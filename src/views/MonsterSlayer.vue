@@ -2,7 +2,9 @@
   <div>
     <component
       :is="selectedComponent"
+      :playerName="playerName"
       :monsterName="monsterName"
+      @playerWasCreated="playerName = $event"
       @monsterWasCreated="monsterName = $event"
     ></component>
     <button
@@ -26,6 +28,7 @@ export default {
   data() {
     return {
       selectedComponent: "MSdetails",
+      playerName: "You",
       monsterName: "Monster",
     };
   },
