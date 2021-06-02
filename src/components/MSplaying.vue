@@ -38,14 +38,31 @@
     </section>
     <section class="images row justify-content-between mx-5 my-3">
       <div class="player-img col-4">
-        <img :src="player.image" class="img-fluid" />
+        <transition :name="player.animation">
+          <img
+            :src="player.image"
+            v-if="!player.isInAction && player.life"
+            class="img-fluid"
+          />
+        </transition>
       </div>
       <div class="monster-img col-4">
-        <img :src="monster.image" class="img-fluid rounded-circle" />
+        <transition :name="monster.animation" appear>
+          <img
+            :src="monster.image"
+            v-if="!monster.isInAction && monster.isShown && monster.life"
+            class="img-fluid rounded-circle"
+          />
+        </transition>
       </div>
     </section>
     <section class="log border shadow">
       <div class="px-3 py-5">
+        <transition name="fade" appear>
+          <p v-if="!logs.length && !isPlaying" class="text-center fs-3">
+            {{ encounterMsg }}
+          </p>
+        </transition>
         <p
           class="fs-5 font-monospace m-0"
           v-for="(log, index) in currentLog"
@@ -60,11 +77,11 @@
       </div>
     </section>
     <section class="position-absolute bottom-0 start-50 translate-middle">
-      <div v-if="!isPlaying && logs.length === 1">
+      <div v-if="!isPlaying && !logs.length">
         <button class="btn btn-lg btn-dark" @click="isPlaying = true">
           たたかう
         </button>
-        <button class="btn btn-lg btn-secondary" @click="encounter('別の')">
+        <button class="btn btn-lg btn-secondary" @click="encounter('べつの')">
           にげる
         </button>
       </div>
@@ -87,7 +104,7 @@
         </div>
       </div>
       <div v-else>
-        <button class="btn btn-lg btn-dark" @click="restart">Retry</button>
+        <button class="btn btn-lg btn-dark" @click="retry">Retry</button>
       </div>
     </section>
   </div>
@@ -102,17 +119,23 @@ export default {
         name: this.playerName,
         life: 100,
         image: require("../assets/player.png"),
-        commands: ["給水した!", "昼寝した!", "平手打ち!", "飛び蹴り!!"],
+        commands: ["給水した！", "昼寝した！", "平手打ち！", "飛び蹴り！"],
+        animation: "player-attack",
+        isInAction: false,
       },
       monster: {
         name: this.monsterName,
         life: 100,
         image: "",
-        commands: ["舐めた...", "噛みついた!", "突進した!!"],
+        commands: ["舐めた...", "噛みついた！", "突進した！"],
+        animation: "encounter",
+        isInAction: false,
+        isShown: false,
       },
       isPlaying: false,
       isClickable: true,
       logs: [],
+      encounterMsg: `${this.monsterName} が あらわれた！！`,
       monsterImages: [
         require("../assets/monster1.png"),
         require("../assets/monster2.png"),
@@ -125,17 +148,20 @@ export default {
   methods: {
     encounter(variety) {
       const index = this.calculater(5, 1) - 1;
+      this.monster.isShown = false;
       this.monster.image = this.monsterImages[index];
       this.logs = [];
-      this.logs.push({
-        isPlayer: false,
-        text: `${variety} ${this.monster.name} があらわれた!!!`,
-      });
+      this.encounterMsg = `${variety} ${this.monster.name} が あらわれた！！`;
+      setTimeout(this.monsterAppear, 500);
     },
-    restart() {
+    monsterAppear() {
+      this.monster.isShown = true;
+    },
+    retry() {
       this.player.life = 100;
       this.monster.life = 100;
-      this.encounter("再び");
+      this.player.animation = "player-attack";
+      this.encounter("ふたたび");
     },
     attack() {
       const damage = this.calculater(5, 1);
@@ -145,21 +171,18 @@ export default {
       } else {
         action = this.player.commands[3];
       }
-      this.monster.life -= damage;
+      this.player.isInAction = true;
+      setTimeout(() => (this.player.isInAction = false), 300);
+      setTimeout(() => {
+        this.monster.life -= damage;
+        this.judge;
+      }, 300);
       this.logs.unshift({
         isPlayer: true,
-        text:
-          this.player.name +
-          " の " +
-          action +
-          " " +
-          this.monster.name +
-          " に " +
-          damage +
-          "ダメージ！",
+        text: `${this.player.name} の ${action} ${this.monster.name} に ${damage}ダメージ！`,
       });
       this.isClickable = false;
-      this.judge();
+      this.changeAnimation(this.monster, "monster-attack");
       setTimeout(this.monsterAttack, 500);
     },
     monsterAttack() {
@@ -172,21 +195,19 @@ export default {
       } else {
         action = this.monster.commands[2];
       }
-      this.player.life -= damage;
+      setTimeout(() => {
+        this.player.life -= damage;
+        this.judge();
+      }, 300);
+      this.monster.isInAction = true;
+      setTimeout(() => {
+        this.monster.isInAction = false;
+        this.isClickable = true;
+      }, 200);
       this.logs.unshift({
         isPlayer: false,
-        text:
-          this.monster.name +
-          " が " +
-          action +
-          " " +
-          this.player.name +
-          " に " +
-          damage +
-          "ダメージ！",
+        text: `${this.monster.name} が ${action} ${this.player.name} に ${damage}ダメージ！`,
       });
-      this.judge();
-      this.isClickable = true;
     },
     calculater(max, min) {
       return Math.max(Math.floor(Math.random() * max) + 1, min);
@@ -203,23 +224,28 @@ export default {
       if (this.player.life > 100) this.player.life = 100;
       this.logs.unshift({
         isPlayer: true,
-        text:
-          this.player.name + " が " + action + "  " + restore + " " + "回復！",
+        text: `${this.player.name} が ${action} ${restore}回復！ `,
       });
       this.isClickable = false;
+      this.monster.animation = "monster-attack";
       setTimeout(this.monsterAttack, 500);
     },
-    judge() {
+    judge: async function() {
       if (this.player.life <= 0) {
+        await this.changeAnimation(this.player, "lose");
+        await alert("You Lose...");
         this.player.life = 0;
-        alert("YOU LOSE...");
         return (this.isPlaying = false);
       } else if (this.monster.life <= 0) {
+        await this.changeAnimation(this.monster, "lose");
+        await alert("YOU WIN!!!");
         this.monster.life = 0;
-        alert("YOU WIN!!!");
         return (this.isPlaying = false);
       }
       return;
+    },
+    changeAnimation(character, animation) {
+      character.animation = animation;
     },
   },
   computed: {
@@ -240,6 +266,13 @@ export default {
   created() {
     this.encounter("野生の");
   },
+  watch: {
+    isPlaying() {
+      if (this.isPlaying === false) {
+        return (this.monster.animation = "encounter");
+      }
+    },
+  },
 };
 </script>
 
@@ -259,5 +292,75 @@ export default {
 
 .dying {
   background-color: red;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: 0.5s;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.encounter-enter {
+  transform: translateX(30px);
+}
+.encounter-enter-active {
+  transition: 200ms;
+}
+.encounter-leave-to {
+  opacity: 0;
+}
+.encounter-leave-active {
+  transition: 500ms;
+}
+
+.player-attack-enter {
+  opacity: 0;
+}
+.player-attack-enter-active {
+  transition: 500ms;
+}
+.player-attack-leave-to {
+  transform: translateX(300px);
+}
+.player-attack-leave-active {
+  transition: 200ms;
+}
+
+.monster-attack-enter-active {
+  animation: bounce-in 100ms;
+}
+.monster-attack-leave-active {
+  animation: bounce-in 100ms reverse;
+}
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.lose-leave-to {
+  opacity: 0;
+}
+.lose-leave-active {
+  transition: 1s;
+  animation: drop-out 1s;
+}
+@keyframes drop-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(30px);
+  }
 }
 </style>
