@@ -104,7 +104,7 @@
         </div>
       </div>
       <div v-else>
-        <button class="btn btn-lg btn-dark" @click="retry">Retry</button>
+        <button class="btn btn-lg btn-dark" @click="retry">リベンジ</button>
       </div>
     </section>
   </div>
@@ -152,10 +152,7 @@ export default {
       this.monster.image = this.monsterImages[index];
       this.logs = [];
       this.encounterMsg = `${variety} ${this.monster.name} が あらわれた！！`;
-      setTimeout(this.monsterAppear, 500);
-    },
-    monsterAppear() {
-      this.monster.isShown = true;
+      setTimeout(() => (this.monster.isShown = true), 500);
     },
     retry() {
       this.player.life = 100;
@@ -165,87 +162,84 @@ export default {
     },
     attack() {
       const damage = this.calculater(5, 1);
-      let action = "";
-      if (damage <= 3) {
-        action = this.player.commands[2];
-      } else {
-        action = this.player.commands[3];
-      }
       this.player.isInAction = true;
-      setTimeout(() => (this.player.isInAction = false), 300);
-      setTimeout(() => {
-        this.monster.life -= damage;
-        this.judge;
-      }, 300);
-      this.logs.unshift({
-        isPlayer: true,
-        text: `${this.player.name} の ${action} ${this.monster.name} に ${damage}ダメージ！`,
-      });
       this.isClickable = false;
-      this.changeAnimation(this.monster, "monster-attack");
+      this.playerAction(damage, "attack");
+      setTimeout(this.judge, 300, this.player, this.monster, damage);
       setTimeout(this.monsterAttack, 500);
     },
     monsterAttack() {
       const damage = this.calculater(10, 3);
-      let action = "";
-      if (damage <= 5) {
-        action = this.monster.commands[0];
-      } else if (damage <= 8) {
-        action = this.monster.commands[1];
-      } else {
-        action = this.monster.commands[2];
-      }
-      setTimeout(() => {
-        this.player.life -= damage;
-        this.judge();
-      }, 300);
       this.monster.isInAction = true;
-      setTimeout(() => {
-        this.monster.isInAction = false;
-        this.isClickable = true;
-      }, 200);
-      this.logs.unshift({
-        isPlayer: false,
-        text: `${this.monster.name} が ${action} ${this.player.name} に ${damage}ダメージ！`,
-      });
+      this.monsterAction(damage);
+      setTimeout(this.judge, 200, this.monster, this.player, damage);
+    },
+    heal() {
+      const restore = this.calculater(10, 5);
+      this.player.life += restore;
+      this.isClickable = false;
+      if (this.player.life > 100) this.player.life = 100;
+      this.playerAction(restore, "heal");
+      setTimeout(this.monsterAttack, 500);
     },
     calculater(max, min) {
       return Math.max(Math.floor(Math.random() * max) + 1, min);
     },
-    heal() {
-      const restore = this.calculater(10, 5);
+    playerAction(amount, type) {
       let action = "";
-      if (restore <= 8) {
+      if (type === "attack" && amount <= 3) {
+        action = this.player.commands[2];
+      } else if (type === "attack" && amount > 3) {
+        action = this.player.commands[3];
+      } else if (type === "heal" && amount <= 8) {
         action = this.player.commands[0];
       } else {
         action = this.player.commands[1];
       }
-      this.player.life += restore;
-      if (this.player.life > 100) this.player.life = 100;
-      this.logs.unshift({
-        isPlayer: true,
-        text: `${this.player.name} が ${action} ${restore}回復！ `,
-      });
-      this.isClickable = false;
-      this.monster.animation = "monster-attack";
-      setTimeout(this.monsterAttack, 500);
+      return this.addLog(true, amount, action, type);
     },
-    judge: async function() {
-      if (this.player.life <= 0) {
-        await this.changeAnimation(this.player, "lose");
-        await alert("You Lose...");
-        this.player.life = 0;
-        return (this.isPlaying = false);
-      } else if (this.monster.life <= 0) {
-        await this.changeAnimation(this.monster, "lose");
-        await alert("YOU WIN!!!");
-        this.monster.life = 0;
-        return (this.isPlaying = false);
+    monsterAction(amount) {
+      let action = "";
+      if (amount <= 5) {
+        action = this.monster.commands[0];
+      } else if (amount <= 8) {
+        action = this.monster.commands[1];
+      } else {
+        action = this.monster.commands[2];
       }
-      return;
+      return this.addLog(false, amount, action);
     },
-    changeAnimation(character, animation) {
-      character.animation = animation;
+    addLog(isPlayer, amount, action, type) {
+      if (type === "heal") {
+        this.logs.unshift({
+          isPlayer,
+          text: `${this.player.name} が ${action} ${amount}回復！ `,
+        });
+      } else if (isPlayer === true) {
+        this.logs.unshift({
+          isPlayer,
+          text: `${this.player.name} の ${action} ${this.monster.name} に ${amount}ダメージ！`,
+        });
+      } else {
+        this.logs.unshift({
+          isPlayer,
+          text: `${this.monster.name} が ${action} ${this.player.name} に ${amount}ダメージ！`,
+        });
+      }
+    },
+    judge(player, opponent, damage) {
+      player.isInAction = false;
+      if (player === this.monster) this.isClickable = true;
+      if (opponent.life <= damage) {
+        opponent.animation = "lose";
+        setTimeout(() => {
+          alert(`${player.name} Win!! /// ${opponent.name} Lose...`);
+          opponent.life = 0;
+          this.isPlaying = false;
+        }, 100);
+      } else {
+        opponent.life -= damage;
+      }
     },
   },
   computed: {
@@ -270,6 +264,8 @@ export default {
     isPlaying() {
       if (this.isPlaying === false) {
         return (this.monster.animation = "encounter");
+      } else if (this.isPlaying === true) {
+        return (this.monster.animation = "monster-attack");
       }
     },
   },
