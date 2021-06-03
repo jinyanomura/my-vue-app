@@ -57,7 +57,7 @@
       </div>
     </section>
     <section class="log border shadow">
-      <div class="px-3 py-5">
+      <div class="px-4 py-4">
         <transition name="fade" appear>
           <p v-if="!logs.length && !isPlaying" class="text-center fs-3">
             {{ encounterMsg }}
