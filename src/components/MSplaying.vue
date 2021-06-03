@@ -233,7 +233,7 @@ export default {
       if (opponent.life <= damage) {
         opponent.animation = "lose";
         setTimeout(() => {
-          alert(`${player.name} Win!! /// ${opponent.name} Lose...`);
+          alert(`${player.name} の勝利！！！`);
           opponent.life = 0;
           this.isPlaying = false;
         }, 100);
