@@ -64,7 +64,7 @@
           </p>
         </transition>
         <p
-          class="fs-5 font-monospace m-0"
+          class="fs-5 font-monospace my-2"
           v-for="(log, index) in currentLog"
           :key="index"
           :class="[
