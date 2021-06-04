@@ -104,13 +104,14 @@
         </div>
       </div>
       <div v-else>
-        <button class="btn btn-lg btn-dark" @click="retry">リベンジ</button>
+        <button class="btn btn-lg btn-dark" @click="retry">Retry</button>
       </div>
     </section>
   </div>
 </template>
 
 <script>
+import firebase from "firebase";
 export default {
   props: ["playerName", "monsterName"],
   data: function() {
@@ -241,6 +242,15 @@ export default {
         opponent.life -= damage;
       }
     },
+    registerRecord() {
+      firebase
+        .firestore()
+        .collection("users")
+        .add({
+          name: this.player.name,
+          record: this.logs.length,
+        });
+    },
   },
   computed: {
     currentLog() {
@@ -262,10 +272,13 @@ export default {
   },
   watch: {
     isPlaying() {
-      if (this.isPlaying === false) {
-        return (this.monster.animation = "encounter");
-      } else if (this.isPlaying === true) {
-        return (this.monster.animation = "monster-attack");
+      if (this.isPlaying === true) {
+        this.monster.animation = "monster-attack";
+      } else if (this.isPlaying === false && !this.monster.life) {
+        this.monster.animation = "encounter";
+        this.registerRecord();
+      } else {
+        this.monster.animation = "encounter";
       }
     },
   },
